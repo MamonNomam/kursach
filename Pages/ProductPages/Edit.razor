@@ -1,0 +1,150 @@
+﻿@page "/products/edit"
+@using Microsoft.EntityFrameworkCore
+@using LiteTe.Data
+@inject IDbContextFactory<LiteTe.Data.ApplicationDbContext> DbFactory
+@inject NavigationManager NavigationManager
+
+<PageTitle>Изменить</PageTitle>
+
+<h1>Изменить</h1>
+
+<h2>Товар</h2>
+<hr />
+@if (Product is null)
+{
+    <p><em>Loading...</em></p>
+}
+else
+{
+    <div class="row">
+        <div class="col-md-4">
+            <EditForm method="post" Model="Product" OnValidSubmit="UpdateProduct" FormName="edit" Enhance>
+                <DataAnnotationsValidator />
+                <ValidationSummary role="alert"/>
+                <input type="hidden" name="Product.ProductId" value="@Product.ProductId" />
+                <div class="mb-3">
+                    <label for="productname" class="form-label">Имя товара:</label>
+                    <InputText id="productname" @bind-Value="Product.ProductName" class="form-control" />
+                    <ValidationMessage For="() => Product.ProductName" class="text-danger" />
+                </div>
+                <div class="mb-3">
+                    <label for="description" class="form-label">Описание:</label>
+                    <InputText id="description" @bind-Value="Product.Description" class="form-control" />
+                    <ValidationMessage For="() => Product.Description" class="text-danger" />
+                </div>
+                @*для списка выпадающего*@
+                <div class="mb-3">
+                    <label for="manufacturerid" class="form-label">Производитель:</label>
+                    <InputSelect id="manufacturerid" @bind-Value="Product.ManufacturerId" class="form-control">
+                        <option value="">Выберите производителя</option>
+                        @foreach (var manufacturer in manufacturers) @*для каждого элемента БД*@
+                        {
+                            <option value="@manufacturer.ManufacturerId">@manufacturer.ManufacturerName</option>
+                        }
+                    </InputSelect>
+                    <ValidationMessage For="() => Product.ManufacturerId" class="text-danger" /> @*обязательный выбор*@
+                </div>
+
+                <div class="mb-3">
+                    <label for="categoryid" class="form-label">Категория:</label>
+                    <InputSelect id="categoryid" @bind-Value="Product.CategoryId" class="form-control">
+                        <option value="">Выберите категорию</option>
+                        @foreach (var category in categories)
+                        {
+                            <option value="@category.CategoryId">@category.CategoryName</option>
+                        }
+                    </InputSelect>
+                    <ValidationMessage For="() => Product.CategoryId" class="text-danger" />
+                </div>
+
+                <div class="mb-3">
+                    <label for="supplierid" class="form-label">Поставщик:</label>
+                    <InputSelect id="supplierid" @bind-Value="Product.SupplierId" class="form-control">
+                        <option value="">Выберите поставщика</option>
+                        @foreach (var supplier in suppliers)
+                        {
+                            <option value="@supplier.SupplierId">@supplier.SupplierName</option>
+                        }
+                    </InputSelect>
+                    <ValidationMessage For="() => Product.SupplierId" class="text-danger" />
+                </div>
+                <div class="mb-3">
+                    <label for="price" class="form-label">Цена:</label>
+                    <InputNumber id="price" @bind-Value="Product.Price" class="form-control" />
+                    <ValidationMessage For="() => Product.Price" class="text-danger" />
+                </div>
+                <div class="mb-3">
+                    <label for="productimage" class="form-label">Путь к изображению:</label>
+                    <InputText id="productimage" @bind-Value="Product.ProductImage" class="form-control" />
+                    <ValidationMessage For="() => Product.ProductImage" class="text-danger" />
+                </div>
+                <button type="submit" class="btn btn-primary">Сохранить изменения</button>
+            </EditForm>
+        </div>
+    </div>
+}
+
+<div>
+    <a href="/products?CategoryId=@Product?.CategoryId">Вернуться</a> @*для перехода обратно*@
+</div>
+
+@code {
+    [SupplyParameterFromQuery]
+    private int ProductId { get; set; }
+    public int? CategoryId { get; set; }
+    [SupplyParameterFromForm]
+    private Product? Product { get; set; }
+    
+    // для списков выпадающих
+    private List<Manufacturer> manufacturers = new();
+    private List<Category> categories = new();
+    private List<Supplier> suppliers = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        using var context = DbFactory.CreateDbContext();
+        Product ??= await context.Products.FirstOrDefaultAsync(m => m.ProductId == ProductId);
+       // Product.CategoryId = CategoryId;//валю не подходит
+        if (Product is null)
+        {
+            NavigationManager.NotFound();
+        }
+
+        //при загрузке чтобы подгружались спискм
+        manufacturers = await context.Manufacturers.ToListAsync();
+        categories = await context.Categories.ToListAsync();
+        suppliers = await context.Suppliers.ToListAsync();
+       
+    }
+
+    // To protect from overposting attacks, enable the specific properties you want to bind to.
+    // For more information, see https://learn.microsoft.com/aspnet/core/blazor/forms/#mitigate-overposting-attacks.
+    private async Task UpdateProduct()
+    {
+        using var context = DbFactory.CreateDbContext();
+        context.Attach(Product!).State = EntityState.Modified;
+
+        try
+        {
+            await context.SaveChangesAsync();
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            if (!ProductExists(Product!.ProductId))
+            {
+                NavigationManager.NotFound();
+            }
+            else
+            {
+                throw;
+            }
+        }
+        NavigationManager.NavigateTo($"/products?CategoryId={Product!.CategoryId}");
+    }
+
+    private bool ProductExists(int productid)
+    {
+        using var context = DbFactory.CreateDbContext();
+        return context.Products.Any(e => e.ProductId == productid);
+    }
+}

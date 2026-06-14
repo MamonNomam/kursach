@@ -1,0 +1,93 @@
+﻿@page "/products/create/backup"
+@using Microsoft.EntityFrameworkCore
+@using LiteTe.Data
+@rendermode InteractiveServer
+@inject IDbContextFactory<LiteTe.Data.ApplicationDbContext> DbFactory
+@inject NavigationManager NavigationManager
+
+<PageTitle>Добавление товара</PageTitle>
+
+<h1>Добавить</h1>
+
+<h2>Товар</h2>
+<hr />
+<div class="row">
+    <div class="col-md-4">
+        <EditForm method="post" Model="Product" OnValidSubmit="AddProduct" FormName="create" Enhance>
+            <DataAnnotationsValidator />
+            <ValidationSummary class="text-danger" role="alert"/>
+            <div class="mb-3">
+                <label for="productname" class="form-label">ProductName:</label> 
+                <InputText id="productname" @bind-Value="Product.ProductName" class="form-control" /> 
+                <ValidationMessage For="() => Product.ProductName" class="text-danger" /> 
+            </div>        
+            <div class="mb-3">
+                <label for="description" class="form-label">Description:</label> 
+                <InputText id="description" @bind-Value="Product.Description" class="form-control" /> 
+                <ValidationMessage For="() => Product.Description" class="text-danger" /> 
+            </div>        
+            <div class="mb-3">
+                <label for="manufacturerid" class="form-label">ManufacturerId:</label> 
+                <InputNumber id="manufacturerid" @bind-Value="Product.ManufacturerId" class="form-control" /> 
+                <ValidationMessage For="() => Product.ManufacturerId" class="text-danger" /> 
+            </div>        
+            <div class="mb-3">
+                <label for="categoryid" class="form-label">CategoryId:</label> 
+  <InputNumber id="categoryid" @bind-Value="Product.CategoryId" class="form-control" /> 
+                  <ValidationMessage For="() => Product.CategoryId" class="text-danger" /> 
+            </div>        
+            <div class="mb-3">
+                <label for="supplierid" class="form-label">SupplierId:</label> 
+                <InputNumber id="supplierid" @bind-Value="Product.SupplierId" class="form-control" /> 
+                <ValidationMessage For="() => Product.SupplierId" class="text-danger" /> 
+            </div>        
+            <div class="mb-3">
+                <label for="price" class="form-label">Price:</label> 
+                <InputNumber id="price" @bind-Value="Product.Price" class="form-control" /> 
+                <ValidationMessage For="() => Product.Price" class="text-danger" /> 
+            </div>        
+            <div class="mb-3">
+                <label for="productimage" class="form-label">ProductImage:</label> 
+                <InputText id="productimage" @bind-Value="Product.ProductImage" class="form-control" /> 
+                <ValidationMessage For="() => Product.ProductImage" class="text-danger" /> 
+            </div>        
+            <button type="submit" class="btn btn-primary">Create</button>
+        </EditForm>
+    </div>
+</div>
+
+<div>
+    <a href="/products?CategoryId=@CategoryId">Вернуться к товарам</a>
+</div>
+
+@code {
+    [SupplyParameterFromQuery]
+    public int? CategoryId { get; set; }
+    [SupplyParameterFromForm]
+   @* private Product Product { get; set; } = default!;*@
+   @*проблемный момент, исправлен*@
+    private Product Product { get; set; } = new Product();
+
+  protected override async Task OnInitializedAsync ()
+    {
+        using var context = DbFactory.CreateDbContext();
+
+        if (CategoryId == null)
+        {
+            NavigationManager.NavigateTo("not found");
+        }
+        Product.CategoryId = CategoryId ?? 0;
+    } 
+
+    // To protect from overposting attacks, see https://learn.microsoft.com/aspnet/core/blazor/forms/#mitigate-overposting-attacks.
+    private async Task AddProduct()
+    {
+        using var context = DbFactory.CreateDbContext();
+        context.Products.Add(Product);
+        await context.SaveChangesAsync();
+        Product.CategoryId = CategoryId ?? 0;
+        NavigationManager.NavigateTo("/products?CategoryId="+CategoryId.ToString());
+    }
+}
+@*для ввода катгиории айди без самого ввода*@
+@* <input type="hidden" name="Product.CategoryId" @bind="Product.CategoryId"></> *@

@@ -1,0 +1,48 @@
+﻿@page "/manufacturers/details"
+@using Microsoft.EntityFrameworkCore
+@using LiteTe.Data
+@inject IDbContextFactory<LiteTe.Data.ApplicationDbContext> DbFactory
+@inject NavigationManager NavigationManager
+
+<PageTitle>Details</PageTitle>
+
+<h1>Details</h1>
+
+<div>
+    <h2>Manufacturer</h2>
+    <hr />
+    @if (manufacturer is null)
+    {
+        <p><em>Loading...</em></p>
+    }
+    else {
+        <dl class="row">
+            <dt class="col-sm-2">ManufacturerName</dt>
+            <dd class="col-sm-10">@manufacturer.ManufacturerName</dd>
+            <dt class="col-sm-2">ManufacturerImage</dt>
+            <dd class="col-sm-10">@manufacturer.ManufacturerImage</dd>
+        </dl>
+        <div>
+            <a href="@($"/manufacturers/edit?manufacturerid={manufacturer.ManufacturerId}")">Edit</a> |
+            <a href="@($"/manufacturers")">Back to List</a>
+        </div>
+    }
+</div>
+
+@code {
+    private Manufacturer? manufacturer;
+
+    [SupplyParameterFromQuery]
+    private int ManufacturerId { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        using var context = DbFactory.CreateDbContext();
+        manufacturer = await context.Manufacturers.FirstOrDefaultAsync(m => m.ManufacturerId == ManufacturerId);
+
+        if (manufacturer is null)
+        {
+            NavigationManager.NotFound();
+        }
+    }
+}

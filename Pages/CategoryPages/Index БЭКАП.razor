@@ -1,0 +1,49 @@
+﻿@page "/backupCategory"
+@using Microsoft.EntityFrameworkCore
+@using Microsoft.AspNetCore.Components.QuickGrid
+@using LiteTe.Data
+@using LiteTe.Data
+@implements IAsyncDisposable
+@inject IDbContextFactory<LiteTe.Data.ApplicationDbContext> DbFactory
+
+<PageTitle>Index</PageTitle>
+
+<h1>Index</h1>
+
+<p>
+    <a href="categories/create">Create New</a>
+</p>
+
+<QuickGrid Class="table" Items="context.Categories">
+    <PropertyColumn Title="Категория" Property="category => category.CategoryName" />
+    <PropertyColumn Title="Количество позиций" Property="category => category.Products!.Count()" />
+    <TemplateColumn Title="Изображение" Context="category">
+        @if (!string.IsNullOrEmpty(category.CategoryImage))
+        {
+            <img src="@category.CategoryImage" alt="@category.CategoryName" style="max-width: 200px; max-height: 200px;" />
+        }
+        else
+        {
+            <span>Нет изображения</span>
+        }
+    </TemplateColumn>
+   @* <PropertyColumn Title="Изображение" Property="category => category.CategoryImage" />*@
+
+    <TemplateColumn Context="category">
+        <a href="@($"products?categoryid={category.CategoryId}")">Товары</a> |
+        <a href="@($"categories/edit?categoryid={category.CategoryId}")">Редактировать</a> |
+        <a href="@($"categories/details?categoryid={category.CategoryId}")">Подробнее</a> |
+        <a href="@($"categories/delete?categoryid={category.CategoryId}")">Удалить</a>
+    </TemplateColumn>
+</QuickGrid>
+
+@code {
+    private ApplicationDbContext context = default!;
+
+    protected override void OnInitialized()
+    {
+        context = DbFactory.CreateDbContext();
+    }
+
+    public async ValueTask DisposeAsync() => await context.DisposeAsync();
+}

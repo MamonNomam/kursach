@@ -1,0 +1,75 @@
+﻿@page "/operations/create"
+@attribute [Authorize(Roles = "Administrator")]
+
+@using Microsoft.EntityFrameworkCore
+@using LiteTe.Data
+@rendermode InteractiveServer
+@inject IDbContextFactory<LiteTe.Data.ApplicationDbContext> DbFactory
+@inject NavigationManager NavigationManager
+
+<PageTitle>Создать</PageTitle>
+
+
+<h1>Редактировать</h1>
+
+<h2>Операция</h2>
+<h1>@OperationTypeName</h1>
+
+<h2>@OperationTypeName</h2>
+<hr />
+<div class="row">
+    <div class="col-md-4">
+        <EditForm method="post" Model="Operation" OnValidSubmit="AddOperation" FormName="create" Enhance>
+            <DataAnnotationsValidator />
+            <ValidationSummary class="text-danger" role="alert"/>
+            <input type="hidden" name="Operation.OperationTypeId" value="@OperationTypeId" />
+            <div class="mb-3">
+                <label for="operationamount" class="form-label">Количество:</label> 
+                <InputNumber id="operationamount" @bind-Value="Operation.OperationAmount" class="form-control" /> 
+                <ValidationMessage For="() => Operation.OperationAmount" class="text-danger" /> 
+            </div>        
+            <div class="mb-3">
+                <label for="operationdate" class="form-label">Дата операции:</label> 
+                <InputDate id="operationdate" @bind-Value="Operation.OperationDate" class="form-control" /> 
+                <ValidationMessage For="() => Operation.OperationDate" class="text-danger" /> 
+            </div>                
+            <InputSelect id="productid" @bind-Value="Operation.ProductId" class="form-control">
+                <option value="">Выберите продукт</option>
+                @foreach (var product in products)
+                {
+                    <option value="@product.ProductId">@product.ProductName</option>
+                }
+            </InputSelect>
+            <button type="submit" class="btn btn-primary">Создать</button>
+        </EditForm>
+    </div>
+</div>
+
+<div>
+    <a href="/operations?OperationTypeId=@OperationTypeId">Назад</a>
+</div>
+
+@code {
+    [SupplyParameterFromQuery]
+    public int? OperationTypeId { get; set; }
+    public string? OperationTypeName { get; set; } //получаем имя типа операции
+    [SupplyParameterFromForm]
+    private Operation Operation { get; set; } = new Operation();
+    private List<Product> products = new(); //для выпадающего списка
+    protected override void OnInitialized() => Operation ??= new();
+    //
+    protected override async Task OnInitializedAsync()
+    {
+        using var context = DbFactory.CreateDbContext();
+        Operation.OperationTypeId = OperationTypeId.Value;
+        products = await context.Products.ToListAsync();
+    }
+    // To protect from overposting attacks, see https://learn.microsoft.com/aspnet/core/blazor/forms/#mitigate-overposting-attacks.
+    private async Task AddOperation()
+    {
+        using var context = DbFactory.CreateDbContext();
+        context.Operations.Add(Operation);
+        await context.SaveChangesAsync();
+        NavigationManager.NavigateTo("/operations?OperationTypeId=" + OperationTypeId.ToString());
+    }
+}

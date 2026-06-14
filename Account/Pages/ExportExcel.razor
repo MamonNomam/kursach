@@ -1,0 +1,58 @@
+﻿@page "/exportexcel"
+@using Microsoft.EntityFrameworkCore
+@using LiteTe.Data
+@using ClosedXML.Excel
+@inject IDbContextFactory<LiteTe.Data.ApplicationDbContext> DbFactory
+@inject NavigationManager NavigationManager
+@inject IJSRuntime js
+@implements IAsyncDisposable
+@rendermode InteractiveServer
+
+<h3>ExportExcel</h3>
+
+
+
+<button type="button" @onclick="ExportXLS" class="btn-success mb-2">Экспорт всех таблиц</button>
+@code {
+	ApplicationDbContext context = default!;
+	protected override async Task OnInitializedAsync()
+	{
+		context = DbFactory.CreateDbContext();
+	}
+
+	public async Task ExportXLS ()
+	{
+		var XLSStream = ExportXLSData();
+		await js.InvokeVoidAsync("BlazorDownloadFile", "Операции.xlsx", XLSStream);
+
+	}
+	private byte[] ExportXLSData ()
+	{
+		using var workbook = new XLWorkbook();
+		var worksheet1 = workbook.Worksheets.Add("Product");
+		worksheet1.Cell(1, 1).Value = "ProductId";
+		worksheet1.Cell(1, 2).Value = "ProductName";
+		worksheet1.Cell(1, 3).Value = "Price";
+		worksheet1.Cell(1, 4).Value = "Description";
+		worksheet1.Row(1).Style.Font.Bold = true;
+
+		int row = 2;
+		foreach(var product in context.Products) 
+		{
+			worksheet1.Cell(row, 1).Value = product.ProductId;
+			worksheet1.Cell(row, 2).Value = product.ProductName;
+			worksheet1.Cell(row, 3).Value = product.Price;
+			worksheet1.Cell(row, 4).Value = product.Description;
+			row++;
+		}
+
+		MemoryStream XLSStream = new();
+
+		workbook.SaveAs(XLSStream);
+		return XLSStream.ToArray();
+
+	}
+
+	public async ValueTask DisposeAsync() => await context.DisposeAsync();
+
+}

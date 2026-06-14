@@ -1,0 +1,46 @@
+﻿@page "/operationtypes/details"
+@using Microsoft.EntityFrameworkCore
+@using LiteTe.Data
+@inject IDbContextFactory<LiteTe.Data.ApplicationDbContext> DbFactory
+@inject NavigationManager NavigationManager
+
+<PageTitle>Details</PageTitle>
+
+<h1>Details</h1>
+
+<div>
+    <h2>OperationType</h2>
+    <hr />
+    @if (operationtype is null)
+    {
+        <p><em>Loading...</em></p>
+    }
+    else {
+        <dl class="row">
+            <dt class="col-sm-2">OperationTypeName</dt>
+            <dd class="col-sm-10">@operationtype.OperationTypeName</dd>
+        </dl>
+        <div>
+            <a href="@($"/operationtypes/edit?operationtypeid={operationtype.OperationTypeId}")">Edit</a> |
+            <a href="@($"/operationtypes")">Back to List</a>
+        </div>
+    }
+</div>
+
+@code {
+    private OperationType? operationtype;
+
+    [SupplyParameterFromQuery]
+    private int OperationTypeId { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        using var context = DbFactory.CreateDbContext();
+        operationtype = await context.OperationTypes.FirstOrDefaultAsync(m => m.OperationTypeId == OperationTypeId);
+
+        if (operationtype is null)
+        {
+            NavigationManager.NotFound();
+        }
+    }
+}

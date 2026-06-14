@@ -1,0 +1,52 @@
+﻿@page "/categories/create"
+@rendermode InteractiveServer
+@using Microsoft.EntityFrameworkCore
+@using LiteTe.Data
+@inject IDbContextFactory<LiteTe.Data.ApplicationDbContext> DbFactory
+@inject NavigationManager NavigationManager
+@attribute [Authorize(Roles = "Administrator")]
+<PageTitle>Добавить</PageTitle>
+
+<h1></h1>
+
+<h2>Категория</h2>
+<hr />
+<div class="row">
+    <div class="col-md-4">
+        <EditForm method="post" Model="Category" OnValidSubmit="AddCategory" FormName="create" Enhance>
+            <DataAnnotationsValidator />
+            <ValidationSummary class="text-danger" role="alert"/>
+            <div class="mb-3">
+                <label for="categoryname" class="form-label">Имя категории:</label> 
+                <InputText id="categoryname" @bind-Value="Category.CategoryName" class="form-control" /> 
+                <ValidationMessage For="() => Category.CategoryName" class="text-danger" /> 
+            </div>        
+            <div class="mb-3">
+                <label for="categoryimage" class="form-label">Путь к изображению:</label> 
+                <InputText id="categoryimage" @bind-Value="Category.CategoryImage" class="form-control" /> 
+                <ValidationMessage For="() => Category.CategoryImage" class="text-danger" /> 
+            </div>        
+            <button type="submit" class="btn btn-primary">Добавить</button>
+        </EditForm>
+    </div>
+</div>
+
+<div>
+    <a href="/categories">Вернуться</a>
+</div>
+
+@code {
+    [SupplyParameterFromForm]
+    private Category Category { get; set; } = default!;
+
+    protected override void OnInitialized() => Category ??= new();
+
+    // To protect from overposting attacks, see https://learn.microsoft.com/aspnet/core/blazor/forms/#mitigate-overposting-attacks.
+    private async Task AddCategory()
+    {
+        using var context = DbFactory.CreateDbContext();
+        context.Categories.Add(Category);
+        await context.SaveChangesAsync();
+        NavigationManager.NavigateTo("/categories");
+    }
+}

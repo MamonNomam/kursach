@@ -1,0 +1,104 @@
+﻿@page "/operations/edit/backup2"
+@using Microsoft.EntityFrameworkCore
+@using LiteTe.Data
+@inject IDbContextFactory<LiteTe.Data.ApplicationDbContext> DbFactory
+@inject NavigationManager NavigationManager
+
+<PageTitle>Edit</PageTitle>
+
+<h1>Edit</h1>
+
+<h2>Operation</h2>
+<hr />
+@if (Operation is null)
+{
+    <p><em>Loading...</em></p>
+}
+else
+{
+    <div class="row">
+        <div class="col-md-4">
+            <EditForm method="post" Model="Operation" OnValidSubmit="UpdateOperation" FormName="edit" Enhance>
+                <DataAnnotationsValidator />
+                <ValidationSummary role="alert" />
+                <input type="hidden" name="Operation.OperationId" value="@Operation.OperationId" />
+                <input type="hidden" name="Operation.OperationTypeId" value="@Operation.OperationTypeId" />
+                <div class="mb-3">
+                    <label for="operationamount" class="form-label">OperationAmount:</label>
+                    <InputNumber id="operationamount" @bind-Value="Operation.OperationAmount" class="form-control" />
+                    <ValidationMessage For="() => Operation.OperationAmount" class="text-danger" />
+                </div>
+                <div class="mb-3">
+                    <label for="operationdate" class="form-label">OperationDate:</label>
+                    <InputDate id="operationdate" @bind-Value="Operation.OperationDate" class="form-control" />
+                    <ValidationMessage For="() => Operation.OperationDate" class="text-danger" />
+                </div>
+                <InputSelect id="productid" @bind-Value="Operation.ProductId" class="form-control">
+                    <option value="">Выберите продукт</option>
+                    @foreach (var product in products)
+                    {
+                        <option value="@product.ProductId">@product.ProductName</option>
+                    }
+                </InputSelect>
+                <button type="submit" class="btn btn-primary">Save</button>
+            </EditForm>
+        </div>
+    </div>
+}
+
+<div>
+    <a href="/operations">Back to List</a>
+</div>
+
+@code {
+    [SupplyParameterFromQuery]
+    private int OperationId { get; set; }
+    private int OperationTypeId { get; set; }
+    [SupplyParameterFromForm]
+    private Operation? Operation { get; set; }
+
+    private List<Product> products = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        using var context = DbFactory.CreateDbContext();
+        Operation ??= await context.Operations.FirstOrDefaultAsync(m => m.OperationId == OperationId);
+
+        if (Operation is null)
+        {
+            NavigationManager.NavigateTo("notfound");
+        }
+        OperationTypeId = Operation.OperationTypeId;
+        products = await context.Products.ToListAsync();
+    }
+
+    private async Task UpdateOperation()
+    {
+        using var context = DbFactory.CreateDbContext();
+        context.Attach(Operation!).State = EntityState.Modified;
+
+        try
+        {
+            await context.SaveChangesAsync();
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            if (!OperationExists(Operation!.OperationId))
+            {
+                NavigationManager.NavigateTo("notfound");
+            }
+            else
+            {
+                throw;
+            }
+        }
+
+        NavigationManager.NavigateTo("/operations?OperationTypeId=" + OperationTypeId.ToString());
+    }
+
+    private bool OperationExists(int operationid)
+    {
+        using var context = DbFactory.CreateDbContext();
+        return context.Operations.Any(e => e.OperationId == operationid);
+    }
+}

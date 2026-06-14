@@ -1,0 +1,32 @@
+﻿@page "/operationtypes"
+@attribute [Authorize(Roles = "Administrator")]
+@using Microsoft.EntityFrameworkCore
+@using Microsoft.AspNetCore.Components.QuickGrid
+@using LiteTe.Data
+@using LiteTe.Data
+@implements IAsyncDisposable
+@inject IDbContextFactory<LiteTe.Data.ApplicationDbContext> DbFactory
+<link rel="stylesheet" href="style.css" />
+
+<PageTitle>Операции</PageTitle>
+
+<h1>Тип операций</h1>
+
+<QuickGrid Class="table" Items="context.OperationTypes">
+    <PropertyColumn title="Тип операции" Property="operationtype => operationtype.OperationTypeName" />
+    <PropertyColumn Title="Всего операций" Property="operationtype => operationtype.Operations!.Count()" />
+    <TemplateColumn Context="operationtype">
+        <a href="@($"operations?operationtypeid={operationtype.OperationTypeId}")">Операции</a> 
+    </TemplateColumn>
+</QuickGrid>
+
+@code {
+    private ApplicationDbContext context = default!;
+
+    protected override void OnInitialized()
+    {
+        context = DbFactory.CreateDbContext();
+    }
+
+    public async ValueTask DisposeAsync() => await context.DisposeAsync();
+}

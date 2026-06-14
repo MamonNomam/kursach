@@ -1,0 +1,50 @@
+﻿@page "/stocks"
+@using Microsoft.EntityFrameworkCore
+@using Microsoft.AspNetCore.Components.QuickGrid
+@using LiteTe.Data
+@implements IAsyncDisposable
+@inject IDbContextFactory<LiteTe.Data.ApplicationDbContext> DbFactory
+<link rel="stylesheet" href="style.css" />
+<PageTitle>Склад</PageTitle>
+
+<h1>Остатки товаров</h1>
+
+
+@*Нужно для вывода имени эксп*@
+<table class="table">
+    <thead>
+        <tr>
+            <th>Товар</th>
+            <th>Остаток на складе</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var stock in stocksWithProducts)
+        {
+            <tr>
+                <td>@stock.Product?.ProductName</td>
+                <td>@stock.Count</td>
+                <td>
+                    @*для просмотра операций конкретного товара*@
+                    <a href="@($"operations/index2?productid={stock.ProductId}")">Операции</a> 
+                    @*пример   <a href="@($"products?categoryid={category.CategoryId}")">Товары</a> |*@
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+@code {
+    private ApplicationDbContext context = default!;
+    //эксп
+    private List<Stock> stocksWithProducts = new();
+    protected override void OnInitialized()
+    {
+        context = DbFactory.CreateDbContext();
+        stocksWithProducts = context.Stocks
+        .Include(s => s.Product)  // эксп для имени вместо ИД
+        .ToList();
+    }
+
+    public async ValueTask DisposeAsync() => await context.DisposeAsync();
+}

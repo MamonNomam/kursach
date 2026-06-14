@@ -1,0 +1,61 @@
+﻿@page "/operations"
+@attribute [Authorize(Roles = "Administrator")]
+@using Microsoft.EntityFrameworkCore
+@using Microsoft.AspNetCore.Components.QuickGrid
+@using LiteTe.Data
+@using LiteTe.Data
+@implements IAsyncDisposable
+@inject IDbContextFactory<LiteTe.Data.ApplicationDbContext> DbFactory
+<link rel="stylesheet" href="style.css" />
+<PageTitle>Операции</PageTitle>
+
+<h1>@OperationTypeName</h1>
+
+<p>
+    <a href="operationtypes">Вернуться</a>
+    <AuthorizeView Roles ="Administrator">
+    <a href="operations/create?OperationTypeId=@OperationTypeId">Создать операцию</a> @*передаем айди*@
+    </AuthorizeView>
+</p>
+@*чтобы не забыть*@
+<QuickGrid Class="table" Items="filteredOperations"> 
+    <TemplateColumn Title="Продукт" Context="operation">
+        @(operation.Product?.ProductName ?? "")
+    </TemplateColumn>
+    <TemplateColumn Title="Тип операции" Context="operation">
+        @(operation.OperationType?.OperationTypeName ?? "")
+    </TemplateColumn>
+    <PropertyColumn Title="Количество" Property="operation => operation.OperationAmount" />
+    <PropertyColumn Title="Дата операции" Property="operation => operation.OperationDate" />
+    <TemplateColumn Context="operation">
+        
+        <a href="@($"operations/edit?operationid={operation.OperationId}&operationtypeid={OperationTypeId}")">Редактировать</a>|
+        <a href="@($"operations/details?operationid={operation.OperationId}&operationtypeid={OperationTypeId}")">Подробнее</a>|
+        <a href="@($"operations/delete?operationid={operation.OperationId}&operationtypeid={OperationTypeId}")">Удалить</a>|
+        
+    </TemplateColumn>
+</QuickGrid>
+
+@code {
+    [SupplyParameterFromQuery]
+    public int? OperationTypeId { get; set; } //получаем айди типа операции на страницу
+    [SupplyParameterFromQuery]
+    public string? OperationTypeName { get; set; } //получаем имя типа операции 
+    private ApplicationDbContext context = default!;
+    //
+    private IQueryable<Operation> filteredOperations = null!;
+    protected override void OnInitialized()
+    {
+        context = DbFactory.CreateDbContext();
+        //вытаскиваем по навигационноиу свойству имя, не передача через страницы!!!
+        var operationtype = context.OperationTypes.FirstOrDefault(d => d.OperationTypeId == OperationTypeId);
+        OperationTypeName = operationtype!.OperationTypeName;
+        //
+        filteredOperations = context.Operations
+        
+        .Where(p => p.OperationTypeId == OperationTypeId)
+        .AsQueryable();
+    }
+
+    public async ValueTask DisposeAsync() => await context.DisposeAsync();
+}

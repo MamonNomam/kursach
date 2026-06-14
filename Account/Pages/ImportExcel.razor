@@ -1,0 +1,136 @@
+﻿@page "/importexcel"
+@using Microsoft.EntityFrameworkCore
+@using LiteTe.Data
+@using ClosedXML.Excel
+@inject IDbContextFactory<LiteTe.Data.ApplicationDbContext> DbFactory
+@inject NavigationManager NavigationManager
+@inject IJSRuntime js
+@rendermode InteractiveServer
+
+<PageTitle> Загрузка файла Excel для импорта</PageTitle>
+<p>
+		<label>Загрузите файл Excel</label>
+		<InputFile OnChange="LoadFiles"></InputFile>
+</p>
+@if (isLoading)
+{
+	<p>Загрузка...</p>
+}
+else
+{
+	<ul>
+		<div >Количество импортированных категорий: @categoryList.Count()</div>
+		@if(StartTime!=null)
+		{
+			TimeSpan ts = (EndTime ?? DateTime.Now).Subtract(StartTime??DateTime.Now);
+			<div>Время выполнения: @String.Format("{0:00}:{1:00}",ts.Seconds,ts.Milliseconds/10)</div>
+		}
+		@if (!string.IsNullOrEmpty(ErrorMessage))
+		{
+			<div>Ошибка: @ErrorMessage</div>
+		}
+	</ul>
+}
+@code {
+	bool isLoading;
+
+	public string ErrorMessage { get; set; } = "";
+
+	const int MAX_FILESIZE = 5000 * 1024; //5мб
+
+	DateTime? StartTime;
+	DateTime? EndTime;
+
+	string? errworksheet { get; set; } = "";
+	int? errindexrow { get; set; } = 0;
+	public List<Category> categoryList = new();
+
+	public List<Product> productList = new();
+
+	private async Task LoadFiles(InputFileChangeEventArgs e)
+	{
+		isLoading = true;
+		var browserFile = e.File;
+		if(browserFile!=null)
+		{
+			try
+			{
+				using(var filestream = browserFile.OpenReadStream(MAX_FILESIZE))
+				{
+					categoryList = new();
+					productList = new();
+					var randomFile = Path.GetTempFileName();
+					var extension = Path.GetExtension(browserFile.Name);
+					var targetFilePath = Path.ChangeExtension(randomFile, extension);
+					using (var destinationStream = new FileStream(targetFilePath, FileMode.Create))
+					{
+						await filestream.CopyToAsync(destinationStream);
+						StartTime = DateTime.Now;
+						await GetDataTableFromExcelAsync(destinationStream);
+						EndTime = DateTime.Now;
+					}
+				}
+			}
+			catch(Exception exception )
+			{
+				ErrorMessage = exception.Message;
+			}
+			isLoading = false;
+		}
+	}
+	public async Task GetDataTableFromExcelAsync(FileStream file)
+	{
+		using var context = DbFactory.CreateDbContext();
+
+		using(XLWorkbook workbook = new XLWorkbook(file))
+		{
+			try
+			{
+				foreach (IXLWorksheet worksheet in workbook.Worksheets)
+				{
+					errindexrow = 1;
+					errworksheet = worksheet.Name;
+					if (worksheet.Name == "Category")
+					{
+						foreach (IXLRow row in worksheet.RowsUsed().Skip(1))
+						{
+							errindexrow++;
+
+							var range = worksheet.RangeUsed();
+							var table = range!.AsTable();
+
+							Category category = new Category();
+
+							category.CategoryId = int.Parse(row.Cell(table.FindColumn(c => c.FirstCell().Value.ToString() == "CategoryId").RangeAddress.FirstAddress.ColumnNumber).Value.ToString());
+							category.CategoryName = row.Cell(table.FindColumn(c => c.FirstCell().Value.ToString() == "CategoryName").RangeAddress.FirstAddress.ColumnNumber).Value.ToString();
+							category.CategoryImage = row.Cell(table.FindColumn(c => c.FirstCell().Value.ToString() == "CategoryImage").RangeAddress.FirstAddress.ColumnNumber).Value.ToString();
+
+							categoryList.Add(category);
+						}
+
+						errworksheet = "";
+						foreach (var el in categoryList)
+						{
+							el.CategoryId = 0;
+						}
+
+						using (var tr = context.Database.BeginTransaction())
+						{
+							context.AddRange(categoryList);
+							await context.SaveChangesAsync();
+							tr.Commit();
+						}
+					}
+				}
+			}
+			catch(Exception exception) 
+			{
+				if(errworksheet != "")
+				{
+					ErrorMessage= "Ошибка в импорте в таблице + "+errworksheet+", строка - " +errindexrow.ToString;
+				}
+			}
+		}
+	}
+
+}

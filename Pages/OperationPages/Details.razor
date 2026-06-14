@@ -1,0 +1,58 @@
+﻿@page "/operations/details"
+@using Microsoft.EntityFrameworkCore
+@using LiteTe.Data
+@inject IDbContextFactory<LiteTe.Data.ApplicationDbContext> DbFactory
+@inject NavigationManager NavigationManager
+
+<PageTitle>Подробнее</PageTitle>
+
+<h1>Подробнее</h1>
+
+<div>
+    <h2>Операция</h2>
+    <hr />
+    @if (operation is null)
+    {
+        <p><em>Loading...</em></p>
+    }
+    else {
+        <dl class="row">
+            <dt class="col-sm-2">ИД Операции</dt>
+            <dd class="col-sm-10">@(operation.OperationType?.OperationTypeName ?? "")</dd>
+            <dt class="col-sm-2">Количество</dt>
+            <dd class="col-sm-10">@operation.OperationAmount</dd>
+            <dt class="col-sm-2">Дата операции</dt>
+            <dd class="col-sm-10">@operation.OperationDate</dd>
+            <dt class="col-sm-2">Продукт</dt>
+            <dd class="col-sm-10">@(operation.Product?.ProductName ?? "")</dd>
+        </dl>
+        <div>
+            <a href="@($"/operations/edit?operationid={operation.OperationId}&operationtypeid={OperationTypeId}")">Изменить</a> |
+            <a href="@($"/operations?OperationTypeId={OperationTypeId}")">Вернуться</a>
+        </div>
+    }
+</div>
+
+@code {
+    private Operation? operation;
+
+    [SupplyParameterFromQuery]
+    private int OperationId { get; set; }
+    [SupplyParameterFromQuery]
+    public int? OperationTypeId { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        using var context = DbFactory.CreateDbContext();
+        operation = await context.Operations.FirstOrDefaultAsync(m => m.OperationId == OperationId);
+
+        if (operation is null)
+        {
+            NavigationManager.NotFound();
+        }
+        operation = await context.Operations //для вывода имен вместо ID
+       .Include(p => p.OperationType)
+       .Include(p => p.Product)
+       .FirstOrDefaultAsync(m => m.OperationId == OperationId);
+    }
+}

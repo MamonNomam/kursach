@@ -1,0 +1,47 @@
+﻿@page "/operations/index2"
+@using Microsoft.EntityFrameworkCore
+@using Microsoft.AspNetCore.Components.QuickGrid
+@using LiteTe.Data
+@using LiteTe.Data
+@implements IAsyncDisposable
+@inject IDbContextFactory<LiteTe.Data.ApplicationDbContext> DbFactory
+<link rel="stylesheet" href="style.css" />
+<PageTitle>Операции</PageTitle>
+
+<h1>Операции товара: @productName</h1>
+
+@*поставил класс, чтобы выводилось отфильтровано*@
+<QuickGrid Class="table" Items="filteredProducts">
+@*<QuickGrid Class="table" Items="context.Operations">*@
+    <PropertyColumn Property="operation => operation.OperationType.OperationTypeName" Title="Тип операции" />    
+    <PropertyColumn Property="operation => operation.OperationAmount" Title="Количество" />
+    <PropertyColumn Property="operation => operation.OperationDate" Title="Дата операции" />
+
+
+</QuickGrid>
+
+@code {
+    [SupplyParameterFromQuery]  // получаем ProductId, иначе не спработает
+    public int? ProductId { get; set; }  // 
+    private string? productName;//ИМЯ ТОВАРА!!!!!!
+
+    private ApplicationDbContext context = default!;
+    //эксперимент 2
+    private IQueryable<Operation> filteredProducts = null!;
+    //
+    protected override void OnInitialized()
+    {
+        context = DbFactory.CreateDbContext();
+        // имя товара 
+         var product = context.Products.FirstOrDefault(p => p.ProductId == ProductId.Value);
+            productName = product?.ProductName ?? "";
+        //фильтрация
+        filteredProducts = context.Operations
+        .Include(o => o.OperationType)//по навигационному свойству получаем имя операции
+        .Where(p => p.ProductId == ProductId)
+        .AsQueryable();
+        //
+    }
+
+    public async ValueTask DisposeAsync() => await context.DisposeAsync();
+}

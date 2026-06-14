@@ -1,0 +1,80 @@
+﻿@page "/products"
+@using Microsoft.EntityFrameworkCore
+@using Microsoft.AspNetCore.Components.QuickGrid
+@using LiteTe.Data
+@using LiteTe.Data
+@implements IAsyncDisposable
+@inject IDbContextFactory<LiteTe.Data.ApplicationDbContext> DbFactory
+@inject NavigationManager NavigationManager
+@*навигейщн менеджер*@
+<link rel="stylesheet" href="style.css" />
+<PageTitle>Товары</PageTitle>
+@*выводим имя категории*@
+<h1>Товары категории - @CategoryName</h1>
+
+<p>
+    <a href="categories">Вернуться</a>
+    <AuthorizeView Roles ="Administrator">
+    <a href="products/create?CategoryId=@CategoryId">Добавить товар</a> @*передаем айди*@
+    </AuthorizeView>
+</p>
+@*поставил класс, чтобы выводилось отфильтровано*@
+<QuickGrid Class="table" Items="filteredProducts">
+@*таблица выводилась вся, а не по категориям*@
+@*<QuickGrid Class="table" Items="context.Products">*@
+    <PropertyColumn title="Продукт" Property="product => product.ProductName" />
+    <TemplateColumn Title="Производитель" Context="product">
+        @(product.Manufacturer?.ManufacturerName ?? "")
+    </TemplateColumn>
+
+    <TemplateColumn Title="Поставщик" Context="product">
+        @(product.Supplier?.SupplierName ?? "")
+    </TemplateColumn>
+    <PropertyColumn Title="Цена" Property="product => product.Price" />
+    <TemplateColumn Title="Изображение" Context="product">
+        @if (!string.IsNullOrEmpty(product.ProductImage))
+        {
+            <img src="@product.ProductImage" alt="@product.ProductImage" />
+        }
+    </TemplateColumn>
+
+    <TemplateColumn Context="product">
+        @*        передаем в страницу категори айди, чтобы потом норм вернуться обратно |*@
+        <a href="@($"products/details?productid={product.ProductId}&categoryid={CategoryId}")">Подробнее</a> 
+        <AuthorizeView Roles ="Administrator">
+        <a href="@($"products/edit?productid={product.ProductId}&categoryid={CategoryId}")">Редактировать</a>|
+        <a href="@($"products/delete?productid={product.ProductId}&categoryid={CategoryId}")">Удалить</a>
+        </AuthorizeView>
+    </TemplateColumn>
+</QuickGrid>
+
+@code {
+    //запрос айди категории
+    [SupplyParameterFromQuery ]
+    public int? CategoryId { get; set; }
+    //для вывода имени категории
+    public string? CategoryName { get; set; }
+    private ApplicationDbContext context = default!;
+    //эксперимент
+    private IQueryable<Product> filteredProducts = null!; //обьявляем переменную 
+
+
+    protected override void OnInitialized()
+    {
+        context = DbFactory.CreateDbContext();
+        //при ненаходе перейти в
+        if(CategoryId==null)
+        {
+            NavigationManager.NavigateTo("not found");
+        }
+        //обьявим переменную для вытаскивания Категори Айди
+        var category = context.Categories.FirstOrDefault(d => d.CategoryId == CategoryId);
+        CategoryName = category!.CategoryName;
+        //фильтрация
+        filteredProducts = context.Products
+        .Where(p => p.CategoryId == CategoryId)
+        .AsQueryable();
+    }
+
+    public async ValueTask DisposeAsync() => await context.DisposeAsync();
+}

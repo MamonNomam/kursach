@@ -1,0 +1,67 @@
+﻿@page "/operations/delete"
+@using Microsoft.EntityFrameworkCore
+@using LiteTe.Data
+@inject IDbContextFactory<LiteTe.Data.ApplicationDbContext> DbFactory
+@inject NavigationManager NavigationManager
+
+<PageTitle>Удалить операцию</PageTitle>
+
+<h1>Удалить</h1>
+
+<p>Вы уверены что хотите удалить операцию?</p>
+<div>
+    <h2>Операция</h2>
+    <hr />
+    @if (operation is null)
+    {
+        <p><em>Loading...</em></p>
+    }
+    else {
+        <dl class="row">
+            <dt class="col-sm-2">ИД операции</dt>
+            <dd class="col-sm-10">@(operation.OperationType?.OperationTypeName ?? "")</dd>
+            <dt class="col-sm-2">Количество</dt>
+            <dd class="col-sm-10">@operation.OperationAmount</dd>
+            <dt class="col-sm-2">Дата операции</dt>
+            <dd class="col-sm-10">@operation.OperationDate</dd>
+            <dt class="col-sm-2">Продукт</dt>
+            <dd class="col-sm-10">@(operation.Product?.ProductName ?? "")</dd>
+        </dl>
+        <EditForm method="post" Model="operation" OnValidSubmit="DeleteOperation" FormName="delete" Enhance>
+            <button type="submit" class="btn btn-danger" disabled="@(operation is null)">Удалить</button> |
+            <a href="@($"/operations?OperationTypeId={OperationTypeId}")">Вернуться</a>
+        </EditForm>
+    }
+</div>
+
+@code {
+    private Operation? operation;
+
+    [SupplyParameterFromQuery]
+    private int OperationId { get; set; }
+    [SupplyParameterFromQuery]
+    private int OperationTypeId { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        using var context = DbFactory.CreateDbContext();
+        operation = await context.Operations.FirstOrDefaultAsync(m => m.OperationId == OperationId);
+
+        if (operation is null)
+        {
+            NavigationManager.NotFound();
+        }
+        operation = await context.Operations //для вывода имен вместо ID
+       .Include(p => p.OperationType)
+       .Include(p => p.Product)
+       .FirstOrDefaultAsync(m => m.OperationId == OperationId);
+    }
+
+    private async Task DeleteOperation()
+    {
+        using var context = DbFactory.CreateDbContext();
+        context.Operations.Remove(operation!);
+        await context.SaveChangesAsync();
+        NavigationManager.NavigateTo("/operations?OperationTypeId=" + OperationTypeId.ToString());
+    }
+}

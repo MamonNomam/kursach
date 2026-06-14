@@ -1,0 +1,120 @@
+﻿@page "/products/edit/backup"
+@using Microsoft.EntityFrameworkCore
+@using LiteTe.Data
+@inject IDbContextFactory<LiteTe.Data.ApplicationDbContext> DbFactory
+@inject NavigationManager NavigationManager
+
+<PageTitle>Edit</PageTitle>
+
+<h1>Edit</h1>
+
+<h2>Product</h2>
+<hr />
+@if (Product is null)
+{
+    <p><em>Loading...</em></p>
+}
+else
+{
+    <div class="row">
+        <div class="col-md-4">
+            <EditForm method="post" Model="Product" OnValidSubmit="UpdateProduct" FormName="edit" Enhance>
+                <DataAnnotationsValidator />
+                <ValidationSummary role="alert"/>
+                <input type="hidden" name="Product.ProductId" value="@Product.ProductId" />
+                <div class="mb-3">
+                    <label for="productname" class="form-label">ProductName:</label>
+                    <InputText id="productname" @bind-Value="Product.ProductName" class="form-control" />
+                    <ValidationMessage For="() => Product.ProductName" class="text-danger" />
+                </div>
+                <div class="mb-3">
+                    <label for="description" class="form-label">Description:</label>
+                    <InputText id="description" @bind-Value="Product.Description" class="form-control" />
+                    <ValidationMessage For="() => Product.Description" class="text-danger" />
+                </div>
+                <div class="mb-3">
+                    <label for="manufacturerid" class="form-label">ManufacturerId:</label>
+                    <InputNumber id="manufacturerid" @bind-Value="Product.ManufacturerId" class="form-control" />
+                    <ValidationMessage For="() => Product.ManufacturerId" class="text-danger" />
+                </div>
+                <div class="mb-3">
+                    <label for="categoryid" class="form-label">CategoryId:</label>
+                    <InputNumber id="categoryid" @bind-Value="Product.CategoryId" class="form-control" />
+                    <ValidationMessage For="() => Product.CategoryId" class="text-danger" />
+                </div>
+                <div class="mb-3">
+                    <label for="supplierid" class="form-label">SupplierId:</label>
+                    <InputNumber id="supplierid" @bind-Value="Product.SupplierId" class="form-control" />
+                    <ValidationMessage For="() => Product.SupplierId" class="text-danger" />
+                </div>
+                <div class="mb-3">
+                    <label for="price" class="form-label">Price:</label>
+                    <InputNumber id="price" @bind-Value="Product.Price" class="form-control" />
+                    <ValidationMessage For="() => Product.Price" class="text-danger" />
+                </div>
+                <div class="mb-3">
+                    <label for="productimage" class="form-label">ProductImage:</label>
+                    <InputText id="productimage" @bind-Value="Product.ProductImage" class="form-control" />
+                    <ValidationMessage For="() => Product.ProductImage" class="text-danger" />
+                </div>
+                <button type="submit" class="btn btn-primary">Save</button>
+            </EditForm>
+        </div>
+    </div>
+}
+
+<div>
+    <a href="/products/CategoryId=@CategoryId">Back to List</a>
+</div>
+
+@code {
+    [SupplyParameterFromQuery]
+    private int ProductId { get; set; }
+    public int? CategoryId { get; set; }
+    [SupplyParameterFromForm]
+    private Product? Product { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        using var context = DbFactory.CreateDbContext();
+        Product ??= await context.Products.FirstOrDefaultAsync(m => m.ProductId == ProductId);
+        Product.CategoryId = CategoryId ?? 0;
+        if (Product is null)
+        {
+            NavigationManager.NotFound();
+        }
+       
+    }
+
+    // To protect from overposting attacks, enable the specific properties you want to bind to.
+    // For more information, see https://learn.microsoft.com/aspnet/core/blazor/forms/#mitigate-overposting-attacks.
+    private async Task UpdateProduct()
+    {
+        using var context = DbFactory.CreateDbContext();
+        context.Attach(Product!).State = EntityState.Modified;
+
+        try
+        {
+            await context.SaveChangesAsync();
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            if (!ProductExists(Product!.ProductId))
+            {
+                NavigationManager.NotFound();
+            }
+            else
+            {
+                throw;
+            }
+        }
+
+        NavigationManager.NavigateTo("/products?CategoryId=" + CategoryId.ToString());
+    }
+
+    private bool ProductExists(int productid)
+    {
+        using var context = DbFactory.CreateDbContext();
+        return context.Products.Any(e => e.ProductId == productid);
+    }
+}
